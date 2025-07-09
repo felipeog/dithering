@@ -1,6 +1,12 @@
+const worker = new Worker("./worker.js");
+
+let ditherStart;
+let ditherEnd;
+
+let drawStart;
+let drawEnd;
+
 const image = new Image();
-const canvas = new OffscreenCanvas(0, 0);
-const context = canvas.getContext("2d", { willReadFrequently: true });
 
 const formElement = document.querySelector("#form");
 const svgElement = document.querySelector("#svg");
@@ -15,131 +21,71 @@ formElement.addEventListener("submit", (event) => {
   const inputFile = formData.get("input");
   const imageSource = URL.createObjectURL(inputFile);
 
-  image.onload = () => {
-    const resizedPixels = getResizedPixels(image, maxLength);
-    const width = resizedPixels.length;
-    const height = resizedPixels[0].length;
+  image.onload = async () => {
+    ditherStart = performance.now();
 
-    foregroundElement.innerHTML = "";
-    svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svgElement.setAttribute("width", width);
-    svgElement.setAttribute("height", height);
+    const canvasElement = document.createElement("canvas");
+    const offscreenCanvas = canvasElement.transferControlToOffscreen();
+    const bitmap = await createImageBitmap(image);
 
-    const ditheredPixels = getDitheredPixels(resizedPixels);
-
-    for (let y = 0; y < height; y++) {
-      const path = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "path"
-      );
-      let d = "";
-
-      path.setAttribute("fill", "white");
-      path.setAttribute("stroke", "none");
-
-      for (let x = 0; x < width; x++) {
-        const [r, g, b] = ditheredPixels[x][y];
-        const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-        if (luminance < 255 * (1 / 2)) continue;
-
-        d +=
-          `M ${x}, ${y} ` +
-          `L ${x + 1}, ${y} ` +
-          `L ${x + 1}, ${y + 1} ` +
-          `L ${x}, ${y + 1} ` +
-          `z `;
-      }
-
-      if (!d) continue;
-
-      path.setAttribute("d", d);
-      foregroundElement.append(path);
-    }
+    worker.postMessage(
+      {
+        offscreenCanvas,
+        bitmap,
+        maxLength,
+      },
+      [offscreenCanvas]
+    );
   };
 
   image.src = imageSource;
 });
 
-function getResizedPixels(image, maxLength = 512) {
-  let width = 0;
-  let height = 0;
+worker.addEventListener("message", (event) => {
+  // console.log("main", event);
 
-  if (image.width > image.height) {
-    width = Math.min(maxLength, image.width);
-    height = Math.floor(image.height * (width / image.width));
-  } else {
-    height = Math.min(maxLength, image.height);
-    width = Math.floor(image.width * (height / image.height));
-  }
+  ditherEnd = performance.now();
+  console.log(`Dither took ${ditherEnd - ditherStart} ms`);
 
-  canvas.width = width;
-  canvas.height = height;
-  context.drawImage(image, 0, 0, width, height);
+  drawStart = performance.now();
 
-  const result = [];
+  const ditheredPixels = event.data;
 
-  for (let x = 0; x < width; x++) {
-    result[x] = [];
+  const width = ditheredPixels.length;
+  const height = ditheredPixels[0].length;
 
-    for (let y = 0; y < height; y++) {
-      const { data } = context.getImageData(x, y, 1, 1);
-      const [r, g, b, a] = data;
-
-      result[x][y] = [r, g, b];
-    }
-  }
-
-  return result;
-}
-
-function getDitheredPixels(pixels) {
-  let result = Array.from(pixels);
-
-  const width = result.length;
-  const height = result[0].length;
+  foregroundElement.innerHTML = "";
+  svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svgElement.setAttribute("width", width);
+  svgElement.setAttribute("height", height);
 
   for (let y = 0; y < height; y++) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    let d = "";
+
+    path.setAttribute("fill", "white");
+    path.setAttribute("stroke", "none");
+
     for (let x = 0; x < width; x++) {
-      const factor = 1;
+      const [r, g, b] = ditheredPixels[x][y];
+      const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
-      const [oldR, oldG, oldB] = result[x][y];
+      if (luminance < 255 * (1 / 2)) continue;
 
-      const newR = Math.round(factor * (oldR / 255)) * (255 / factor);
-      const newG = Math.round(factor * (oldG / 255)) * (255 / factor);
-      const newB = Math.round(factor * (oldB / 255)) * (255 / factor);
-
-      const errorR = oldR - newR;
-      const errorG = oldG - newG;
-      const errorB = oldB - newB;
-
-      result[x][y] = [newR, newG, newB];
-
-      if (result?.[x + 1]?.[y]) {
-        result[x + 1][y][0] += errorR * (7 / 16);
-        result[x + 1][y][1] += errorG * (7 / 16);
-        result[x + 1][y][2] += errorB * (7 / 16);
-      }
-
-      if (result?.[x - 1]?.[y + 1]) {
-        result[x - 1][y + 1][0] += errorR * (3 / 16);
-        result[x - 1][y + 1][1] += errorG * (3 / 16);
-        result[x - 1][y + 1][2] += errorB * (3 / 16);
-      }
-
-      if (result?.[x]?.[y + 1]) {
-        result[x][y + 1][0] += errorR * (5 / 16);
-        result[x][y + 1][1] += errorG * (5 / 16);
-        result[x][y + 1][2] += errorB * (5 / 16);
-      }
-
-      if (result?.[x + 1]?.[y + 1]) {
-        result[x + 1][y + 1][0] += errorR * (1 / 16);
-        result[x + 1][y + 1][1] += errorG * (1 / 16);
-        result[x + 1][y + 1][2] += errorB * (1 / 16);
-      }
+      d +=
+        `M ${x}, ${y} ` +
+        `L ${x + 1}, ${y} ` +
+        `L ${x + 1}, ${y + 1} ` +
+        `L ${x}, ${y + 1} ` +
+        `z `;
     }
+
+    if (!d) continue;
+
+    path.setAttribute("d", d);
+    foregroundElement.append(path);
   }
 
-  return result;
-}
+  drawEnd = performance.now();
+  console.log(`Drawing took ${drawEnd - drawStart} ms`);
+});
