@@ -49,43 +49,46 @@ worker.addEventListener("message", (event) => {
 
   drawStart = performance.now();
 
-  const ditheredPixels = event.data;
+  const { pathString, width, height } = event.data;
 
-  const width = ditheredPixels.length;
-  const height = ditheredPixels[0].length;
-
-  foregroundElement.innerHTML = "";
   svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svgElement.setAttribute("width", width);
   svgElement.setAttribute("height", height);
 
-  for (let y = 0; y < height; y++) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    let d = "";
+  foregroundElement.innerHTML = "";
 
-    path.setAttribute("fill", "white");
-    path.setAttribute("stroke", "none");
-
-    for (let x = 0; x < width; x++) {
-      const [r, g, b] = ditheredPixels[x][y];
-      const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-      if (luminance < 255 * (1 / 2)) continue;
-
-      d +=
-        `M ${x}, ${y} ` +
-        `L ${x + 1}, ${y} ` +
-        `L ${x + 1}, ${y + 1} ` +
-        `L ${x}, ${y + 1} ` +
-        `z `;
-    }
-
-    if (!d) continue;
-
-    path.setAttribute("d", d);
-    foregroundElement.append(path);
-  }
+  insertInChunks(pathString);
 
   drawEnd = performance.now();
   console.log(`Drawing took ${drawEnd - drawStart} ms`);
 });
+
+function insertInChunks(pathsString) {
+  const paths = pathsString.split("\n").filter((path) => path.trim() !== "");
+
+  function insertNextChunk() {
+    const chunk = paths.splice(0, 10);
+    const fragment = document.createDocumentFragment();
+
+    chunk.forEach((path) => {
+      const pathElement = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+      );
+
+      pathElement.setAttribute("d", path);
+      pathElement.setAttribute("fill", "white");
+      pathElement.setAttribute("stroke", "none");
+
+      fragment.appendChild(pathElement);
+    });
+
+    foregroundElement.appendChild(fragment);
+
+    if (paths.length <= 0) return;
+
+    requestAnimationFrame(insertNextChunk);
+  }
+
+  requestAnimationFrame(insertNextChunk);
+}

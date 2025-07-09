@@ -3,14 +3,17 @@ self.onmessage = (event) => {
 
   const { offscreenCanvas, bitmap, maxLength } = event.data;
 
-  const context = offscreenCanvas.getContext("2d", {
-    willReadFrequently: true,
-  });
+  const context = offscreenCanvas.getContext("2d");
 
   const resizedPixels = getResizedPixels(bitmap, maxLength);
   const ditheredPixels = getDitheredPixels(resizedPixels);
+  const pathString = getPathString(ditheredPixels);
 
-  self.postMessage(ditheredPixels);
+  self.postMessage({
+    pathString,
+    width: resizedPixels.length,
+    height: resizedPixels[0].length,
+  });
 
   function getResizedPixels(bitmap, maxLength = 512) {
     let width = 0;
@@ -98,5 +101,36 @@ self.onmessage = (event) => {
     }
 
     return result;
+  }
+
+  function getPathString(pixels) {
+    let pathString = "";
+
+    const width = pixels.length;
+    const height = pixels[0].length;
+
+    for (let y = 0; y < height; y++) {
+      let d = "";
+
+      for (let x = 0; x < width; x++) {
+        const [r, g, b] = pixels[x][y];
+        const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+        if (luminance < 255 * (1 / 2)) continue;
+
+        d +=
+          `M ${x}, ${y} ` +
+          `L ${x + 1}, ${y} ` +
+          `L ${x + 1}, ${y + 1} ` +
+          `L ${x}, ${y + 1} ` +
+          `z `;
+      }
+
+      if (!d) continue;
+
+      pathString += `${d}\n`;
+    }
+
+    return pathString;
   }
 };
