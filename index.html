@@ -25,10 +25,36 @@
       <br />
 
       <br />
+
       <input type="submit" />
     </form>
 
     <br />
+
+    <label>
+      resizeProgress:
+      <progress id="resizeProgress" max="100" value="0"></progress>
+    </label>
+    <br />
+
+    <label>
+      ditherProgress:
+      <progress id="ditherProgress" max="100" value="0"></progress>
+    </label>
+    <br />
+
+    <label>
+      pathProgress:
+      <progress id="pathProgress" max="100" value="0"></progress>
+    </label>
+    <br />
+
+    <label>
+      renderProgress:
+      <progress id="renderProgress" max="100" value="0"></progress>
+    </label>
+    <br />
+
     <br />
 
     <svg
@@ -1293,6 +1319,6 @@
       </g>
     </svg>
 
-    <script src="./mains.js"></script>
+    <script type="module" src="./mains.js"></script>
   </body>
 </html>

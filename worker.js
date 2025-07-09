@@ -1,3 +1,5 @@
+import { WORKER_EVENT_MAP } from "./constants.js";
+
 self.onmessage = (event) => {
   //   console.log("worker", event);
 
@@ -10,6 +12,7 @@ self.onmessage = (event) => {
   const pathString = getPathString(ditheredPixels);
 
   self.postMessage({
+    type: WORKER_EVENT_MAP.PATH_STRING,
     pathString,
     width: resizedPixels.length,
     height: resizedPixels[0].length,
@@ -26,6 +29,8 @@ self.onmessage = (event) => {
       height = Math.min(maxLength, bitmap.height);
       width = Math.floor(bitmap.width * (height / bitmap.height));
     }
+
+    const pixelsAmount = width * height;
 
     offscreenCanvas.width = width;
     offscreenCanvas.height = height;
@@ -47,6 +52,11 @@ self.onmessage = (event) => {
 
         result[x][y] = [r, g, b];
       }
+
+      self.postMessage({
+        type: WORKER_EVENT_MAP.RESIZE_PROGRESS,
+        progress: ((x + 1) * height) / pixelsAmount,
+      });
     }
 
     return result;
@@ -57,6 +67,7 @@ self.onmessage = (event) => {
 
     const width = result.length;
     const height = result[0].length;
+    const pixelsAmount = width * height;
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -98,6 +109,11 @@ self.onmessage = (event) => {
           result[x + 1][y + 1][2] += errorB * (1 / 16);
         }
       }
+
+      self.postMessage({
+        type: WORKER_EVENT_MAP.DITHER_PROGRESS,
+        progress: ((y + 1) * width) / pixelsAmount,
+      });
     }
 
     return result;
@@ -108,6 +124,7 @@ self.onmessage = (event) => {
 
     const width = pixels.length;
     const height = pixels[0].length;
+    const pixelsAmount = width * height;
 
     for (let y = 0; y < height; y++) {
       let d = "";
@@ -125,6 +142,11 @@ self.onmessage = (event) => {
           `L ${x}, ${y + 1} ` +
           `z `;
       }
+
+      self.postMessage({
+        type: WORKER_EVENT_MAP.PATH_PROGRESS,
+        progress: ((y + 1) * width) / pixelsAmount,
+      });
 
       if (!d) continue;
 

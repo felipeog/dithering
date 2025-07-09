@@ -1,20 +1,27 @@
-const worker = new Worker("./worker.js");
+import { MAIN_EVENT_MAP, WORKER_EVENT_MAP } from "./constants.js";
 
-let ditherStart;
-let ditherEnd;
-
-let drawStart;
-let drawEnd;
+const worker = new Worker("./worker.js", { type: "module" });
 
 const image = new Image();
 
 const formElement = document.querySelector("#form");
+
 const svgElement = document.querySelector("#svg");
 const backgroundElement = document.querySelector("#background");
 const foregroundElement = document.querySelector("#foreground");
 
+const resizeProgressElement = document.querySelector("#resizeProgress");
+const ditherProgressElement = document.querySelector("#ditherProgress");
+const pathProgressElement = document.querySelector("#pathProgress");
+const renderProgressElement = document.querySelector("#renderProgress");
+
 formElement.addEventListener("submit", (event) => {
   event.preventDefault();
+
+  resizeProgressElement.value = 0;
+  ditherProgressElement.value = 0;
+  pathProgressElement.value = 0;
+  renderProgressElement.value = 0;
 
   const formData = new FormData(event.target);
   const maxLength = Number(formData.get("maxLength"));
@@ -22,8 +29,6 @@ formElement.addEventListener("submit", (event) => {
   const imageSource = URL.createObjectURL(inputFile);
 
   image.onload = async () => {
-    ditherStart = performance.now();
-
     const canvasElement = document.createElement("canvas");
     const offscreenCanvas = canvasElement.transferControlToOffscreen();
     const bitmap = await createImageBitmap(image);
@@ -42,29 +47,39 @@ formElement.addEventListener("submit", (event) => {
 });
 
 worker.addEventListener("message", (event) => {
-  // console.log("main", event);
+  const { type } = event.data;
 
-  ditherEnd = performance.now();
-  console.log(`Dither took ${ditherEnd - ditherStart} ms`);
+  if (type === WORKER_EVENT_MAP.RESIZE_PROGRESS) {
+    const { progress } = event.data;
+    resizeProgressElement.value = Math.round(progress * 100);
+  }
 
-  drawStart = performance.now();
+  if (type === WORKER_EVENT_MAP.DITHER_PROGRESS) {
+    const { progress } = event.data;
+    ditherProgressElement.value = Math.round(progress * 100);
+  }
 
-  const { pathString, width, height } = event.data;
+  if (type === WORKER_EVENT_MAP.PATH_PROGRESS) {
+    const { progress } = event.data;
+    pathProgressElement.value = Math.round(progress * 100);
+  }
 
-  svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svgElement.setAttribute("width", width);
-  svgElement.setAttribute("height", height);
+  if (type === WORKER_EVENT_MAP.PATH_STRING) {
+    const { pathString, width, height } = event.data;
 
-  foregroundElement.innerHTML = "";
+    svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svgElement.setAttribute("width", width);
+    svgElement.setAttribute("height", height);
 
-  insertInChunks(pathString);
+    foregroundElement.innerHTML = "";
 
-  drawEnd = performance.now();
-  console.log(`Drawing took ${drawEnd - drawStart} ms`);
+    insertInChunks(pathString);
+  }
 });
 
 function insertInChunks(pathsString) {
   const paths = pathsString.split("\n").filter((path) => path.trim() !== "");
+  const initialLength = paths.length;
 
   function insertNextChunk() {
     const chunk = paths.splice(0, 10);
@@ -84,6 +99,9 @@ function insertInChunks(pathsString) {
     });
 
     foregroundElement.appendChild(fragment);
+    renderProgressElement.value = Math.round(
+      (1 - paths.length / initialLength) * 100
+    );
 
     if (paths.length <= 0) return;
 
