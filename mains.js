@@ -1,6 +1,12 @@
+let ditherStart;
+let ditherEnd;
+
+let drawStart;
+let drawEnd;
+
 const image = new Image();
 const canvas = new OffscreenCanvas(0, 0);
-const context = canvas.getContext("2d", { willReadFrequently: true });
+const context = canvas.getContext("2d");
 
 const formElement = document.querySelector("#form");
 const svgElement = document.querySelector("#svg");
@@ -16,16 +22,23 @@ formElement.addEventListener("submit", (event) => {
   const imageSource = URL.createObjectURL(inputFile);
 
   image.onload = () => {
+    ditherStart = performance.now();
+
     const resizedPixels = getResizedPixels(image, maxLength);
-    const width = resizedPixels.length;
-    const height = resizedPixels[0].length;
+    const ditheredPixels = getDitheredPixels(resizedPixels);
+
+    ditherEnd = performance.now();
+    console.log(`Dithering took ${ditherEnd - ditherStart} ms`);
+
+    drawStart = performance.now();
+
+    const width = ditheredPixels.length;
+    const height = ditheredPixels[0].length;
 
     foregroundElement.innerHTML = "";
     svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
     svgElement.setAttribute("width", width);
     svgElement.setAttribute("height", height);
-
-    const ditheredPixels = getDitheredPixels(resizedPixels);
 
     for (let y = 0; y < height; y++) {
       const path = document.createElementNS(
@@ -56,6 +69,9 @@ formElement.addEventListener("submit", (event) => {
       path.setAttribute("d", d);
       foregroundElement.append(path);
     }
+
+    drawEnd = performance.now();
+    console.log(`Drawing took ${drawEnd - drawStart} ms`);
   };
 
   image.src = imageSource;
@@ -77,14 +93,19 @@ function getResizedPixels(image, maxLength = 512) {
   canvas.height = height;
   context.drawImage(image, 0, 0, width, height);
 
+  const { data } = context.getImageData(0, 0, width, height);
+
   const result = [];
 
   for (let x = 0; x < width; x++) {
     result[x] = [];
 
     for (let y = 0; y < height; y++) {
-      const { data } = context.getImageData(x, y, 1, 1);
-      const [r, g, b, a] = data;
+      const index = (x + y * width) * 4;
+
+      const r = data[index];
+      const g = data[index + 1];
+      const b = data[index + 2];
 
       result[x][y] = [r, g, b];
     }
