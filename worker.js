@@ -28,14 +28,19 @@ self.onmessage = (event) => {
     offscreenCanvas.height = height;
     context.drawImage(bitmap, 0, 0, width, height);
 
+    const { data } = context.getImageData(0, 0, width, height);
+
     const result = [];
 
     for (let x = 0; x < width; x++) {
       result[x] = [];
 
       for (let y = 0; y < height; y++) {
-        const { data } = context.getImageData(x, y, 1, 1);
-        const [r, g, b, a] = data;
+        const index = (x + y * width) * 4;
+
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
 
         result[x][y] = [r, g, b];
       }
