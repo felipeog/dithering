@@ -1,5 +1,6 @@
 import "./style.css";
 import { WORKER_EVENT_MAP } from "./constants";
+import { TWorkerData } from "./types";
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
@@ -7,16 +8,24 @@ const worker = new Worker(new URL("./worker.ts", import.meta.url), {
 
 const image = new Image();
 
-const formElement = document.querySelector("#form");
+const formElement = document.querySelector("#form") as HTMLFormElement;
 
-const canvasElement = document.querySelector("#canvas");
-const context = canvasElement.getContext("2d");
+const canvasElement = document.querySelector("#canvas") as HTMLCanvasElement;
+const context = canvasElement.getContext("2d") as CanvasRenderingContext2D;
 
-const resizeProgressElement = document.querySelector("#resizeProgress");
-const ditherProgressElement = document.querySelector("#ditherProgress");
-const imageProgressElement = document.querySelector("#imageProgress");
+const resizeProgressElement = document.querySelector(
+  "#resizeProgress"
+) as HTMLProgressElement;
+const ditherProgressElement = document.querySelector(
+  "#ditherProgress"
+) as HTMLProgressElement;
+const imageProgressElement = document.querySelector(
+  "#imageProgress"
+) as HTMLProgressElement;
 
-const downloadElement = document.querySelector("#download");
+const downloadElement = document.querySelector(
+  "#download"
+) as HTMLButtonElement;
 
 downloadElement.addEventListener("click", () => {
   const dataURL = canvasElement.toDataURL("image/png");
@@ -34,9 +43,9 @@ formElement.addEventListener("submit", (event) => {
   ditherProgressElement.value = 0;
   imageProgressElement.value = 0;
 
-  const formData = new FormData(event.target);
+  const formData = new FormData(event.target as HTMLFormElement);
   const maxLength = Number(formData.get("maxLength"));
-  const inputFile = formData.get("input");
+  const inputFile = formData.get("input") as Blob;
   const imageSource = URL.createObjectURL(inputFile);
 
   image.onload = async () => {
@@ -49,7 +58,7 @@ formElement.addEventListener("submit", (event) => {
         offscreenCanvas,
         bitmap,
         maxLength,
-      },
+      } satisfies TWorkerData,
       [offscreenCanvas]
     );
   };

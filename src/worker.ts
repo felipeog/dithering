@@ -1,9 +1,12 @@
 import { WORKER_EVENT_MAP } from "./constants";
+import { TWorkerData } from "./types";
 
-self.onmessage = (event) => {
+self.onmessage = (event: MessageEvent<TWorkerData>) => {
   const { offscreenCanvas, bitmap, maxLength } = event.data;
 
-  const context = offscreenCanvas.getContext("2d");
+  const context = offscreenCanvas.getContext(
+    "2d"
+  ) as OffscreenCanvasRenderingContext2D;
 
   const resizedPixels = getResizedPixels(bitmap, maxLength);
   const ditheredPixels = getDitheredPixels(resizedPixels);
@@ -14,7 +17,7 @@ self.onmessage = (event) => {
     imageData,
   });
 
-  function getResizedPixels(bitmap, maxLength = 512) {
+  function getResizedPixels(bitmap: ImageBitmap, maxLength = 512) {
     let width = 0;
     let height = 0;
 
@@ -34,7 +37,7 @@ self.onmessage = (event) => {
 
     const { data } = context.getImageData(0, 0, width, height);
 
-    const result = [];
+    const result: number[][][] = [];
 
     for (let x = 0; x < width; x++) {
       result[x] = [];
@@ -58,7 +61,7 @@ self.onmessage = (event) => {
     return result;
   }
 
-  function getDitheredPixels(pixels) {
+  function getDitheredPixels(pixels: number[][][]) {
     let result = Array.from(pixels);
 
     const width = result.length;
@@ -115,7 +118,7 @@ self.onmessage = (event) => {
     return result;
   }
 
-  function getImageData(pixels) {
+  function getImageData(pixels: number[][][]) {
     const width = pixels.length;
     const height = pixels[0].length;
     const pixelsAmount = width * height;
