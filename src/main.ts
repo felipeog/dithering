@@ -69,6 +69,12 @@ formElement.addEventListener("submit", (event) => {
 worker.addEventListener("message", (event) => {
   const { type } = event.data;
 
+  if (type === WORKER_EVENT_MAP.ERROR) {
+    const { error } = event.data;
+    console.error(error);
+    alert(error);
+  }
+
   if (type === WORKER_EVENT_MAP.RESIZE_PROGRESS) {
     const { progress } = event.data;
     resizeProgressElement.value = Math.round(progress * 100);

@@ -3,4 +3,5 @@ export const WORKER_EVENT_MAP = {
   DITHER_PROGRESS: "ditherProgress",
   IMAGE_PROGRESS: "imageProgress",
   IMAGE_DATA: "imageData",
+  ERROR: "error",
 };
