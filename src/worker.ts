@@ -1,4 +1,4 @@
-import { WORKER_EVENT_MAP } from "./constants.js";
+import { WORKER_EVENT_MAP } from "./constants";
 
 self.onmessage = (event) => {
   const { offscreenCanvas, bitmap, maxLength } = event.data;

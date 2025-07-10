@@ -1,6 +1,9 @@
-import { WORKER_EVENT_MAP } from "./constants.js";
+import "./style.css";
+import { WORKER_EVENT_MAP } from "./constants";
 
-const worker = new Worker("./worker.js", { type: "module" });
+const worker = new Worker(new URL("./worker.ts", import.meta.url), {
+  type: "module",
+});
 
 const image = new Image();
 
