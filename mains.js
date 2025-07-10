@@ -1,4 +1,4 @@
-import { MAIN_EVENT_MAP, WORKER_EVENT_MAP } from "./constants.js";
+import { WORKER_EVENT_MAP } from "./constants.js";
 
 const worker = new Worker("./worker.js", { type: "module" });
 
@@ -6,30 +6,22 @@ const image = new Image();
 
 const formElement = document.querySelector("#form");
 
-const svgElement = document.querySelector("#svg");
-const backgroundElement = document.querySelector("#background");
-const foregroundElement = document.querySelector("#foreground");
+const canvasElement = document.querySelector("#canvas");
+const context = canvasElement.getContext("2d");
 
 const resizeProgressElement = document.querySelector("#resizeProgress");
 const ditherProgressElement = document.querySelector("#ditherProgress");
-const pathProgressElement = document.querySelector("#pathProgress");
-const renderProgressElement = document.querySelector("#renderProgress");
+const imageProgressElement = document.querySelector("#imageProgress");
+
 const downloadElement = document.querySelector("#download");
 
 downloadElement.addEventListener("click", () => {
-  const serializer = new XMLSerializer();
-  const svgString = serializer.serializeToString(svgElement);
-  const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+  const dataURL = canvasElement.toDataURL("image/png");
   const link = document.createElement("a");
 
-  link.href = URL.createObjectURL(blob);
-  link.download = "dithering.svg";
-
-  document.body.appendChild(link);
+  link.href = dataURL;
+  link.download = "dithering.png";
   link.click();
-  document.body.removeChild(link);
-
-  URL.revokeObjectURL(link.href);
 });
 
 formElement.addEventListener("submit", (event) => {
@@ -37,8 +29,7 @@ formElement.addEventListener("submit", (event) => {
 
   resizeProgressElement.value = 0;
   ditherProgressElement.value = 0;
-  pathProgressElement.value = 0;
-  renderProgressElement.value = 0;
+  imageProgressElement.value = 0;
 
   const formData = new FormData(event.target);
   const maxLength = Number(formData.get("maxLength"));
@@ -76,54 +67,17 @@ worker.addEventListener("message", (event) => {
     ditherProgressElement.value = Math.round(progress * 100);
   }
 
-  if (type === WORKER_EVENT_MAP.PATH_PROGRESS) {
+  if (type === WORKER_EVENT_MAP.IMAGE_PROGRESS) {
     const { progress } = event.data;
-    pathProgressElement.value = Math.round(progress * 100);
+    imageProgressElement.value = Math.round(progress * 100);
   }
 
-  if (type === WORKER_EVENT_MAP.PATH_STRING) {
-    const { pathString, width, height } = event.data;
+  if (type === WORKER_EVENT_MAP.IMAGE_DATA) {
+    const { imageData } = event.data;
 
-    svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svgElement.setAttribute("width", width);
-    svgElement.setAttribute("height", height);
+    canvasElement.width = imageData.width;
+    canvasElement.height = imageData.height;
 
-    foregroundElement.innerHTML = "";
-
-    insertInChunks(pathString);
+    context.putImageData(imageData, 0, 0);
   }
 });
-
-function insertInChunks(pathsString) {
-  const paths = pathsString.split("\n").filter((path) => path.trim() !== "");
-  const initialLength = paths.length;
-
-  function insertNextChunk() {
-    const chunk = paths.splice(0, 10);
-    const fragment = document.createDocumentFragment();
-
-    chunk.forEach((path) => {
-      const pathElement = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "path"
-      );
-
-      pathElement.setAttribute("d", path);
-      pathElement.setAttribute("fill", "white");
-      pathElement.setAttribute("stroke", "none");
-
-      fragment.appendChild(pathElement);
-    });
-
-    foregroundElement.appendChild(fragment);
-    renderProgressElement.value = Math.round(
-      (1 - paths.length / initialLength) * 100
-    );
-
-    if (paths.length <= 0) return;
-
-    requestAnimationFrame(insertNextChunk);
-  }
-
-  requestAnimationFrame(insertNextChunk);
-}
