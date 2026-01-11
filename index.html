@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="/pico.min.css" />
 
     <title>dithering</title>
   </head>
@@ -17,43 +17,33 @@
         file:
         <input type="file" name="input" id="input" accept="image/*" />
       </label>
-      <br />
 
       <label>
         maxLength:
         <input type="number" name="maxLength" id="maxLength" value="256" />
       </label>
-      <br />
-
-      <br />
 
       <input type="submit" />
     </form>
 
-    <br />
+    <div class="grid">
+      <label>
+        resizeProgress:
+        <progress id="resizeProgress" max="100" value="0"></progress>
+      </label>
 
-    <label>
-      resizeProgress:
-      <progress id="resizeProgress" max="100" value="0"></progress>
-    </label>
-    <br />
+      <label>
+        ditherProgress:
+        <progress id="ditherProgress" max="100" value="0"></progress>
+      </label>
 
-    <label>
-      ditherProgress:
-      <progress id="ditherProgress" max="100" value="0"></progress>
-    </label>
-    <br />
+      <label>
+        imageProgress:
+        <progress id="imageProgress" max="100" value="0"></progress>
+      </label>
+    </div>
 
-    <label>
-      imageProgress:
-      <progress id="imageProgress" max="100" value="0"></progress>
-    </label>
-    <br />
-
-    <br />
-
-    <button type="button" id="download">Download</button>
-    <br />
+    <button type="button" id="download" disabled>Download</button>
 
     <br />
 
