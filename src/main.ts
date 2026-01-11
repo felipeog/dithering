@@ -39,6 +39,8 @@ downloadElement.addEventListener("click", () => {
 formElement.addEventListener("submit", (event) => {
   event.preventDefault();
 
+  downloadElement.disabled = true;
+
   resizeProgressElement.value = 0;
   ditherProgressElement.value = 0;
   imageProgressElement.value = 0;
@@ -72,6 +74,7 @@ worker.addEventListener("message", (event) => {
   if (type === WORKER_EVENT_MAP.ERROR) {
     const { error } = event.data;
     console.error(error);
+    downloadElement.disabled = true;
     alert(error);
   }
 
@@ -97,5 +100,7 @@ worker.addEventListener("message", (event) => {
     canvasElement.height = imageData.height;
 
     context.putImageData(imageData, 0, 0);
+
+    downloadElement.disabled = false;
   }
 });
